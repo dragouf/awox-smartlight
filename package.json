@@ -1,6 +1,6 @@
 {
   "name": "awox-smartlight",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Control Awox smartlight from nodejs",
   "main": "build/lib.js",
   "scripts": {
@@ -23,26 +23,26 @@
   },
   "homepage": "https://github.com/dragouf/awox-smartlight#readme",
   "devDependencies": {
-   "babel-cli": "^6.18.0",
-   "babel-preset-latest": "^6.16.0",
-   "babel-preset-stage-2": "^6.24.1",
-   "jsdoc-to-markdown": "^3.0.0"
- },
- "keywords": [
-   "awox",
-   "smartlight",
-   "lightbulb",
-   "BLE"
- ],
- "dependencies": {
-   "noble": "^1.8.1",
-   "colorsys": "^1.0.10",
-   "yargs": "^6.6.0"
- },
- "babel": {
-   "presets": [
-     "latest",
-     "stage-2"
-   ]
- }
+    "babel-cli": "^6.18.0",
+    "babel-preset-latest": "^6.16.0",
+    "babel-preset-stage-2": "^6.24.1",
+    "jsdoc-to-markdown": "^3.0.0"
+  },
+  "keywords": [
+    "awox",
+    "smartlight",
+    "lightbulb",
+    "BLE"
+  ],
+  "dependencies": {
+    "noble": "^1.8.1",
+    "colorsys": "^1.0.10",
+    "yargs": "^6.6.0"
+  },
+  "babel": {
+    "presets": [
+      "latest",
+      "stage-2"
+    ]
+  }
 }
