@@ -18,6 +18,8 @@ module.exports = class AwoxSmartLight {
       process.exit();
     }, 6000);
 
+    var lampMac = this.lampMac;
+
     noble.on('stateChange', function(state) {
       if (state === 'poweredOn') {
         console.log('start scanning');
@@ -30,8 +32,6 @@ module.exports = class AwoxSmartLight {
 
     noble.on('discover', function(peripheral) {
         console.log("found peripherical with id:", peripheral.id, ". and name: ", peripheral.advertisement.localName);
-        var lampMac = this.lampMac;
-
         if(peripheral.id.trim().toLowerCase() == lampMac.trim().toLowerCase()) {
             noble.stopScanning();
             peripheral.connect(function(error) {
