@@ -1,10 +1,10 @@
 {
-  "name": "awox_smartlight",
+  "name": "awox-smartlight",
   "version": "1.0.0",
   "description": "Control Awox smartlight from nodejs",
   "main": "build/lib.js",
   "scripts": {
-    "release": "npm run build && npm version patch -m 'Bumped to %s.' && npm publish",
+    "release": "npm run build && npm version patch && npm publish",
     "postversion": "git push && git push --tags",
     "build": "babel src/lib.js > build/lib.js && babel src/cli.js > build/cli.js",
     "doc": "jsdoc2md src/lib.js"
