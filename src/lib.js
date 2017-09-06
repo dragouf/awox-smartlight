@@ -41,7 +41,8 @@ module.exports = class AwoxSmartLight {
             });
 
             peripheral.on('disconnect', function() {
-              console.log("disconnected", peripheral.advertisement.localName)
+              console.log("disconnected", peripheral.advertisement.localName);
+              platform.exit(0);
             });
           });
         }
