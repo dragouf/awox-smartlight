@@ -21,8 +21,13 @@ module.exports = function () {
   }
 
   _createClass(AwoxSmartLight, [{
-    key: '_lightCommand',
+    key: "_lightCommand",
     value: function _lightCommand(command) {
+      setTimeout(function () {
+        console.log("timeout, exiting...");
+        process.exit();
+      }, 6000);
+
       noble.on('stateChange', function (state) {
         if (state === 'poweredOn') {
           console.log('start scanning');
@@ -35,7 +40,9 @@ module.exports = function () {
 
       noble.on('discover', function (peripheral) {
         console.log("found peripherical with id:", peripheral.id, ". and name: ", peripheral.advertisement.localName);
-        if (peripheral.id == this.lampMac) {
+        var lampMac = this.lampMac;
+
+        if (peripheral.id.trim().toLowerCase() == lampMac.trim().toLowerCase()) {
           noble.stopScanning();
           peripheral.connect(function (error) {
             console.log('connected to peripheral: ' + peripheral.uuid);
@@ -52,45 +59,45 @@ module.exports = function () {
 
             peripheral.on('disconnect', function () {
               console.log("disconnected", peripheral.advertisement.localName);
-              platform.exit(0);
+              process.exit();
             });
           });
         }
       });
     }
   }, {
-    key: 'lightOn',
+    key: "lightOn",
     value: function lightOn() {
       this._lightCommand(SEQUENCE_ON);
     }
   }, {
-    key: 'lightOff',
+    key: "lightOff",
     value: function lightOff() {
       this._lightCommand(SEQUENCE_OFF);
     }
   }, {
-    key: 'lightBrightness',
+    key: "lightBrightness",
     value: function lightBrightness(intensity) {
       SEQUENCE_BRIGHNTESS[8] = intensity;
       SEQUENCE_BRIGHNTESS[10] = this._checksum(SEQUENCE_BRIGHNTESS);
       this._lightCommand(SEQUENCE_BRIGHNTESS);
     }
   }, {
-    key: 'lightBrightness',
+    key: "lightBrightness",
     value: function lightBrightness(intensity) {
       SEQUENCE_BRIGHNTESS[8] = intensity;
       SEQUENCE_BRIGHNTESS[10] = this._checksum(SEQUENCE_BRIGHNTESS);
       this._lightCommand(SEQUENCE_BRIGHNTESS);
     }
   }, {
-    key: 'lightWhite',
+    key: "lightWhite",
     value: function lightWhite(temperature) {
       SEQUENCE_WHITE[8] = temperature;
       SEQUENCE_WHITE[10] = this._checksum(SEQUENCE_WHITE);
       this._lightCommand(SEQUENCE_WHITE);
     }
   }, {
-    key: 'lightRgb',
+    key: "lightRgb",
     value: function lightRgb(r, g, b, special) {
       SEQUENCE_RGB[8] = special ? 0x02 : 0x01;
       SEQUENCE_RGB[9] = r;
@@ -101,7 +108,7 @@ module.exports = function () {
       this._lightCommand(SEQUENCE_RGB);
     }
   }, {
-    key: '_checksum',
+    key: "_checksum",
     value: function _checksum(command) {
       var sum = 0;
       for (var i = 1; i + 2 < command.length; i++) {

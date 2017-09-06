@@ -9,10 +9,15 @@ const SEQUENCE_RGB = [0xAA, 0x0A, 0xFC, 0x3A, 0x86, 0x01, 0x0D, 0x06, 0x01, 0x00
 
 module.exports = class AwoxSmartLight {
   constructor (lampMac) { /*"d03972b84926"*/
-    this.lampMac = lampMac
+    this.lampMac = lampMac;
   }
 
   _lightCommand(command) {
+    setTimeout(() => {
+      console.log("timeout, exiting...");
+      process.exit();
+    }, 6000);
+
     noble.on('stateChange', function(state) {
       if (state === 'poweredOn') {
         console.log('start scanning');
@@ -24,8 +29,10 @@ module.exports = class AwoxSmartLight {
     });
 
     noble.on('discover', function(peripheral) {
-       console.log("found peripherical with id:", peripheral.id, ". and name: ", peripheral.advertisement.localName);
-        if(peripheral.id == this.lampMac) {
+        console.log("found peripherical with id:", peripheral.id, ". and name: ", peripheral.advertisement.localName);
+        var lampMac = this.lampMac;
+
+        if(peripheral.id.trim().toLowerCase() == lampMac.trim().toLowerCase()) {
             noble.stopScanning();
             peripheral.connect(function(error) {
               console.log('connected to peripheral: ' + peripheral.uuid);
@@ -42,7 +49,7 @@ module.exports = class AwoxSmartLight {
 
             peripheral.on('disconnect', function() {
               console.log("disconnected", peripheral.advertisement.localName);
-              platform.exit(0);
+              process.exit();
             });
           });
         }
