@@ -24,9 +24,9 @@ module.exports = class AwoxSmartLight {
     });
 
     noble.on('discover', function(peripheral) {
+       console.log("found peripherical with id:", peripheral.id, ". and name: ", peripheral.advertisement.localName);
         if(peripheral.id == this.lampMac) {
             noble.stopScanning();
-            console.log('Found device with local name: ' + peripheral.advertisement.localName);
             peripheral.connect(function(error) {
               console.log('connected to peripheral: ' + peripheral.uuid);
               peripheral.discoverServices(['fff0'], function(error, services) {
