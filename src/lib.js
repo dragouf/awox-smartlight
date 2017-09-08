@@ -14,11 +14,10 @@ module.exports = class AwoxSmartLight {
 
   _lightCommand(command) {
     setTimeout(() => {
-      console.log("timeout, exiting...");
-      process.exit();
+      console.log("timeout, stopping...");
+      noble.stopScanning();
+      //process.exit();
     }, 6000);
-
-    var lampMac = this.lampMac;
 
     noble.on('stateChange', function(state) {
       if (state === 'poweredOn') {
@@ -32,6 +31,7 @@ module.exports = class AwoxSmartLight {
 
     noble.on('discover', function(peripheral) {
         console.log("found peripherical with id:", peripheral.id, ". and name: ", peripheral.advertisement.localName);
+
         if(peripheral.id.trim().toLowerCase() == lampMac.trim().toLowerCase()) {
             noble.stopScanning();
             peripheral.connect(function(error) {
@@ -49,7 +49,7 @@ module.exports = class AwoxSmartLight {
 
             peripheral.on('disconnect', function() {
               console.log("disconnected", peripheral.advertisement.localName);
-              process.exit();
+              //process.exit();
             });
           });
         }
