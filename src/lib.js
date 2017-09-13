@@ -14,9 +14,9 @@ module.exports = class AwoxSmartLight {
 
   _lightCommand(command) {
     setTimeout(() => {
-      console.log("timeout, stopping...");
+      console.log("timeout, sto trying to connect to smartlight...");
       noble.stopScanning();
-      //process.exit();
+      noble.stop();
     }, 6000);
 
     noble.on('stateChange', function(state) {
@@ -49,7 +49,7 @@ module.exports = class AwoxSmartLight {
 
             peripheral.on('disconnect', function() {
               console.log("disconnected", peripheral.advertisement.localName);
-              //process.exit();
+              noble.stop();
             });
           });
         }
