@@ -23,6 +23,7 @@ module.exports = function () {
   _createClass(AwoxSmartLight, [{
     key: "_lightCommand",
     value: function _lightCommand(command) {
+      var lampMac = this.lampMac;
       setTimeout(function () {
         console.log("timeout, sto trying to connect to smartlight...");
         noble.stopScanning();

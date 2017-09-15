@@ -13,13 +13,14 @@ module.exports = class AwoxSmartLight {
   }
 
   _lightCommand(command) {
+    var lampMac = this.lampMac;
     setTimeout(() => {
       console.log("timeout, sto trying to connect to smartlight...");
       noble.stopScanning();
       noble.stop();
     }, 6000);
 
-    noble.on('stateChange', function(state) {
+    noble.on('stateChange', (state) => {
       if (state === 'poweredOn') {
         console.log('start scanning');
         noble.startScanning();
@@ -29,25 +30,25 @@ module.exports = class AwoxSmartLight {
       }
     });
 
-    noble.on('discover', function(peripheral) {
+    noble.on('discover', (peripheral) => {
         console.log("found peripherical with id:", peripheral.id, ". and name: ", peripheral.advertisement.localName);
 
         if(peripheral.id.trim().toLowerCase() == lampMac.trim().toLowerCase()) {
             noble.stopScanning();
-            peripheral.connect(function(error) {
+            peripheral.connect((error) => {
               console.log('connected to peripheral: ' + peripheral.uuid);
               peripheral.discoverServices(['fff0'], function(error, services) {
                 console.log(services.length, 'service uuid:', services[0].uuid);
-                services[0].discoverCharacteristics(['fff1'], function(error, characteristics) {
+                services[0].discoverCharacteristics(['fff1'], (error, characteristics) => {
                     console.log(characteristics.length, 'characteristic:', characteristics[0].uuid);
-                    characteristics[0].write(new Buffer(command), true, function(error) {
+                    characteristics[0].write(new Buffer(command), true, (error) => {
                     console.log('command sent');
                     peripheral.disconnect();
                 });
               });
             });
 
-            peripheral.on('disconnect', function() {
+            peripheral.on('disconnect', () => {
               console.log("disconnected", peripheral.advertisement.localName);
               noble.stop();
             });
