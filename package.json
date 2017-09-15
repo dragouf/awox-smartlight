@@ -1,6 +1,6 @@
 {
   "name": "awox-smartlight",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Control Awox smartlight from nodejs",
   "main": "build/lib.js",
   "scripts": {
