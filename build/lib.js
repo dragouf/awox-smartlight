@@ -18,87 +18,57 @@ module.exports = function () {
 
     /*"d03972b84926"*/
     this.lampMac = lampMac;
+    this.timeout = null;
   }
 
   _createClass(AwoxSmartLight, [{
-    key: "_lightCommand",
-    value: function _lightCommand(command) {
-      var lampMac = this.lampMac;
-      setTimeout(function () {
-        console.log("timeout, sto trying to connect to smartlight...");
-        noble.stopScanning();
-        noble.stop();
-      }, 6000);
+    key: '_lightCommand',
+    value: function _lightCommand(command, resultCallback) {
+      // if nothing is done after 6s stop everything
+      this.timeout = setTimeout(this._onTimeOut.bind(this), 6000);
 
-      noble.on('stateChange', function (state) {
-        if (state === 'poweredOn') {
-          console.log('start scanning');
-          noble.startScanning();
-        } else {
-          console.log('stop scanning');
-          noble.stopScanning();
-        }
-      });
+      // wait for ble device before to start scanning for lamp
+      noble.on('stateChange', this._onStateChange.bind(this));
 
-      noble.on('discover', function (peripheral) {
-        console.log("found peripherical with id:", peripheral.id, ". and name: ", peripheral.advertisement.localName);
+      // when a peripherical is found try to send command
+      noble.on('discover', this._onStateChange.bind(this));
 
-        if (peripheral.id.trim().toLowerCase() == lampMac.trim().toLowerCase()) {
-          noble.stopScanning();
-          peripheral.connect(function (error) {
-            console.log('connected to peripheral: ' + peripheral.uuid);
-            peripheral.discoverServices(['fff0'], function (error, services) {
-              console.log(services.length, 'service uuid:', services[0].uuid);
-              services[0].discoverCharacteristics(['fff1'], function (error, characteristics) {
-                console.log(characteristics.length, 'characteristic:', characteristics[0].uuid);
-                characteristics[0].write(new Buffer(command), true, function (error) {
-                  console.log('command sent');
-                  peripheral.disconnect();
-                });
-              });
-            });
-
-            peripheral.on('disconnect', function () {
-              console.log("disconnected", peripheral.advertisement.localName);
-              noble.stop();
-            });
-          });
-        }
-      });
+      // start noble
+      noble.start();
     }
   }, {
-    key: "lightOn",
+    key: 'lightOn',
     value: function lightOn() {
       this._lightCommand(SEQUENCE_ON);
     }
   }, {
-    key: "lightOff",
+    key: 'lightOff',
     value: function lightOff() {
       this._lightCommand(SEQUENCE_OFF);
     }
   }, {
-    key: "lightBrightness",
+    key: 'lightBrightness',
     value: function lightBrightness(intensity) {
       SEQUENCE_BRIGHNTESS[8] = intensity;
       SEQUENCE_BRIGHNTESS[10] = this._checksum(SEQUENCE_BRIGHNTESS);
       this._lightCommand(SEQUENCE_BRIGHNTESS);
     }
   }, {
-    key: "lightBrightness",
+    key: 'lightBrightness',
     value: function lightBrightness(intensity) {
       SEQUENCE_BRIGHNTESS[8] = intensity;
       SEQUENCE_BRIGHNTESS[10] = this._checksum(SEQUENCE_BRIGHNTESS);
       this._lightCommand(SEQUENCE_BRIGHNTESS);
     }
   }, {
-    key: "lightWhite",
+    key: 'lightWhite',
     value: function lightWhite(temperature) {
       SEQUENCE_WHITE[8] = temperature;
       SEQUENCE_WHITE[10] = this._checksum(SEQUENCE_WHITE);
       this._lightCommand(SEQUENCE_WHITE);
     }
   }, {
-    key: "lightRgb",
+    key: 'lightRgb',
     value: function lightRgb(r, g, b, special) {
       SEQUENCE_RGB[8] = special ? 0x02 : 0x01;
       SEQUENCE_RGB[9] = r;
@@ -109,12 +79,66 @@ module.exports = function () {
       this._lightCommand(SEQUENCE_RGB);
     }
   }, {
-    key: "_checksum",
+    key: '_checksum',
     value: function _checksum(command) {
       var sum = 0;
       for (var i = 1; i + 2 < command.length; i++) {
         sum += command[i];
       }return sum + 85;
+    }
+  }, {
+    key: '_onStateChange',
+    value: function _onStateChange(state) {
+      var _this = this;
+
+      var lampMac = this.lampMac;
+
+      console.log("found peripherical with id:", peripheral.id, ". and name: ", peripheral.advertisement.localName);
+
+      if (peripheral.id.trim().toLowerCase() == lampMac.trim().toLowerCase()) {
+        noble.stopScanning();
+        peripheral.connect(function (error) {
+          console.log('connected to peripheral: ' + peripheral.uuid);
+          peripheral.discoverServices(['fff0'], function (error, services) {
+            if (!services || services.length === 0) return;
+            console.log(services.length, 'service uuid:', services[0].uuid);
+            services[0].discoverCharacteristics(['fff1'], function (error, characteristics) {
+              if (!characteristics || characteristics.length === 0) return;
+              console.log(characteristics.length, 'characteristic:', characteristics[0].uuid);
+              characteristics[0].write(new Buffer(command), true, function (error) {
+                console.log('command sent');
+                if (resultCallback) resultCallback(true);
+                peripheral.disconnect();
+              });
+            });
+          });
+
+          peripheral.on('disconnect', function () {
+            console.log("disconnected", peripheral.advertisement.localName);
+            clearTimeout(_this.timeout);
+            noble.stop();
+          });
+        });
+      }
+    }
+  }, {
+    key: '_onPeriphericalDiscover',
+    value: function _onPeriphericalDiscover(peripheral) {
+      if (state === 'poweredOn') {
+        console.log('start scanning');
+        noble.startScanning();
+      } else {
+        console.log('stop scanning');
+        noble.stopScanning();
+      }
+    }
+  }, {
+    key: '_onTimeOut',
+    value: function _onTimeOut() {
+      console.log("timeout, sto trying to connect to smartlight...");
+      noble.stopScanning();
+      noble.stop();
+      if (resultCallback) resultCallback(false);
     }
   }]);
 

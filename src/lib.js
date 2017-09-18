@@ -10,51 +10,21 @@ const SEQUENCE_RGB = [0xAA, 0x0A, 0xFC, 0x3A, 0x86, 0x01, 0x0D, 0x06, 0x01, 0x00
 module.exports = class AwoxSmartLight {
   constructor (lampMac) { /*"d03972b84926"*/
     this.lampMac = lampMac;
+    this.timeout = null;
   }
 
-  _lightCommand(command) {
-    var lampMac = this.lampMac;
-    setTimeout(() => {
-      console.log("timeout, sto trying to connect to smartlight...");
-      noble.stopScanning();
-      noble.stop();
-    }, 6000);
+  _lightCommand(command, resultCallback) {
+    // if nothing is done after 6s stop everything
+    this.timeout = setTimeout(this._onTimeOut.bind(this), 6000);
 
-    noble.on('stateChange', (state) => {
-      if (state === 'poweredOn') {
-        console.log('start scanning');
-        noble.startScanning();
-      } else {
-        console.log('stop scanning');
-        noble.stopScanning();
-      }
-    });
+    // wait for ble device before to start scanning for lamp
+    noble.on('stateChange', this._onStateChange.bind(this));
 
-    noble.on('discover', (peripheral) => {
-        console.log("found peripherical with id:", peripheral.id, ". and name: ", peripheral.advertisement.localName);
+    // when a peripherical is found try to send command
+    noble.on('discover', this._onStateChange.bind(this));
 
-        if(peripheral.id.trim().toLowerCase() == lampMac.trim().toLowerCase()) {
-            noble.stopScanning();
-            peripheral.connect((error) => {
-              console.log('connected to peripheral: ' + peripheral.uuid);
-              peripheral.discoverServices(['fff0'], function(error, services) {
-                console.log(services.length, 'service uuid:', services[0].uuid);
-                services[0].discoverCharacteristics(['fff1'], (error, characteristics) => {
-                    console.log(characteristics.length, 'characteristic:', characteristics[0].uuid);
-                    characteristics[0].write(new Buffer(command), true, (error) => {
-                    console.log('command sent');
-                    peripheral.disconnect();
-                });
-              });
-            });
-
-            peripheral.on('disconnect', () => {
-              console.log("disconnected", peripheral.advertisement.localName);
-              noble.stop();
-            });
-          });
-        }
-    });
+    // start noble
+    noble.start();
   }
 
   lightOn() {
@@ -98,5 +68,58 @@ module.exports = class AwoxSmartLight {
       for (let i = 1; i+2 < command.length; i++)
           sum += command[i];
       return sum + 85;
+  }
+
+  _onStateChange(state) {
+    var lampMac = this.lampMac;
+
+    console.log("found peripherical with id:", peripheral.id, ". and name: ", peripheral.advertisement.localName);
+
+    if(peripheral.id.trim().toLowerCase() == lampMac.trim().toLowerCase()) {
+        noble.stopScanning();
+        peripheral.connect((error) => {
+          console.log('connected to peripheral: ' + peripheral.uuid);
+          peripheral.discoverServices(['fff0'], (error, services) => {
+            if(!services || services.length === 0)
+              return;
+            console.log(services.length, 'service uuid:', services[0].uuid);
+            services[0].discoverCharacteristics(['fff1'], (error, characteristics) => {
+                if(!characteristics || characteristics.length === 0)
+                  return;
+                console.log(characteristics.length, 'characteristic:', characteristics[0].uuid);
+                characteristics[0].write(new Buffer(command), true, (error) => {
+                console.log('command sent');
+                if(resultCallback)
+                  resultCallback(true);
+                peripheral.disconnect();
+            });
+          });
+        });
+
+        peripheral.on('disconnect', () => {
+          console.log("disconnected", peripheral.advertisement.localName);
+           clearTimeout(this.timeout);
+          noble.stop();
+        });
+      });
+    }
+  }
+
+  _onPeriphericalDiscover(peripheral) {
+    if (state === 'poweredOn') {
+      console.log('start scanning');
+      noble.startScanning();
+    } else {
+      console.log('stop scanning');
+      noble.stopScanning();
+    }
+  }
+
+  _onTimeOut() {
+    console.log("timeout, sto trying to connect to smartlight...");
+    noble.stopScanning();
+    noble.stop();
+    if(resultCallback)
+      resultCallback(false);
   }
 }
