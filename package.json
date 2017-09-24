@@ -35,7 +35,7 @@
     "BLE"
   ],
   "dependencies": {
-    "noble-extended": "^0.0.3",
+    "noble-extended": "^0.0.5",
     "colorsys": "^1.0.10",
     "yargs": "^6.6.0"
   },
