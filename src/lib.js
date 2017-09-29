@@ -1,4 +1,5 @@
 "use strict";
+var nobleExtended = require('../../noble');
 
 const SEQUENCE_ON = [0xAA, 0x0A, 0xFC, 0x3A, 0x86, 0x01, 0x0A, 0x01, 0x01, 0x00, 0x28, 0x0D];
 const SEQUENCE_OFF = [0xAA, 0x0A, 0xFC, 0x3A, 0x86, 0x01, 0x0A, 0x01, 0x00, 0x01, 0x28, 0x0D];
@@ -13,7 +14,7 @@ module.exports = class AwoxSmartLight {
     this.timeout = null;
     this.logger = logger || console.log;
     this.commandsQueue = [];
-    this.lightCommandDebounce = this._debounce(this._lightCommand, 1000);
+    this.lightCommandDebounce = this._debounce(this._lightCommand.bind(this), 1000);
   }
 
   _lightCommand() {
@@ -22,19 +23,20 @@ module.exports = class AwoxSmartLight {
       return;
     }
 
-    this.noble = require('noble-extended');
+    var noble = new nobleExtended.Noble(nobleExtended.bindings);
+
     this.isScanning = true;
     // if nothing is done after 6s stop everything
-    this.timeout = setTimeout(this._onTimeOut.bind(this), 6000);
+    //this.timeout = setTimeout(this._onTimeOut.bind(this, noble), 6000);
 
     // wait for ble device before to start scanning for lamp
-    this.noble.on('stateChange', this._onStateChange.bind(this));
+    noble.on('stateChange', (state) => this._onStateChange(state, noble));
 
     // then try to send command
-    this.noble.on('discover', this._onPeripheralDiscover.bind(this));
+    noble.on('discover', (peripheral) => this._onPeripheralDiscover(peripheral, noble));
 
     // start noble for scanning
-    this.noble.start();
+    noble.start();
   }
 
   lightOn() {
@@ -79,12 +81,12 @@ module.exports = class AwoxSmartLight {
       return sum + 85;
   }
 
-  _onPeripheralDiscover(peripheral) {
+  _onPeripheralDiscover(peripheral, noble) {
       var lampMac = this.lampMac;
       if(peripheral.id.trim().toLowerCase() == lampMac.trim().toLowerCase()) {
           this.logger("found lamp with id:", peripheral.id, ". and name: ", peripheral.advertisement.localName);
           this.isScanning = false;
-          this.noble.stopScanning();
+          noble.stopScanning();
           peripheral.connect((error) => {
               if(error) {
                 this.logger('connected to peripheral: ' + peripheral.uuid + ' with error ' + error);
@@ -97,11 +99,15 @@ module.exports = class AwoxSmartLight {
                 if(error) {
                   this.logger('cant find service...');
                   this.logger('the following error occured:' + error);
+                  if(this.commandsQueue.length === 0)
+                    peripheral.disconnect();
                   return;
                 }
 
                 if(!services || services.length === 0){
                   this.logger('cant find service...');
+                  if(this.commandsQueue.length === 0)
+                    peripheral.disconnect();
                   return;
                 }
 
@@ -111,11 +117,15 @@ module.exports = class AwoxSmartLight {
                     if(error) {
                       this.logger('cant find characteristic...');
                       this.logger('the following error occured:' + error);
+                      if(this.commandsQueue.length === 0)
+                        peripheral.disconnect();
                       return;
                     }
 
                     if(!characteristics || characteristics.length === 0) {
                       this.logger('cant find characteristic...');
+                      if(this.commandsQueue.length === 0)
+                        peripheral.disconnect();
                       return;
                     }
 
@@ -125,12 +135,12 @@ module.exports = class AwoxSmartLight {
                     var commandCharacteristic = characteristics[0];
                     while(command = this.commandsQueue.shift()) {
                         this.logger('command:' + command);
-                        commandCharacteristic.write(new Buffer(command), true, (error) => {
+                        commandCharacteristic.write(new Buffer(command), false, (error) => {
                             if(error) {
                               this.logger('cant send command');
                               this.logger('the following error occured:' + error);
                             } else {
-                              //this.logger('command sent');
+                              this.logger('command sent');
                             }
 
                             if(this.commandsQueue.length === 0)
@@ -145,29 +155,28 @@ module.exports = class AwoxSmartLight {
               this.logger("disconnected", peripheral.advertisement.localName);
               clearTimeout(this.timeout);
               peripheral.removeAllListeners();
-              this.noble.removeAllListeners();
-              this.noble.stop();
-              delete this.noble;
+              noble.removeAllListeners();
+              noble.stop();
           });
       }
   }
 
-  _onStateChange(state) {
+  _onStateChange(state, noble) {
       if (state === 'poweredOn') {
         this.logger('start scanning');
-        this.noble.startScanning();
+        noble.startScanning();
       } else {
         this.logger('State change to ' + state + '. Stop scanning');
-        this.noble.stopScanning();
+        noble.stopScanning();
       }
   }
 
-  _onTimeOut() {
+  _onTimeOut(noble) {
     this.isScanning = false;
     this.logger("timeout trying to connect to smartlight...");
-    this.noble.stopScanning();
-    this.noble.removeAllListeners();
-    this.noble.stop();
+    noble.stopScanning();
+    noble.removeAllListeners();
+    noble.stop();
     //delete this.noble;
   }
 
