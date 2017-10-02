@@ -1,5 +1,5 @@
 "use strict";
-var nobleExtended = require('../../noble');
+var nobleExtended = require('noble-extended');
 
 const HEADER = [0xAA, 0x0A, 0xFC, 0x3A, 0x86, 0x01];
 const TAIL = [0x0D];
