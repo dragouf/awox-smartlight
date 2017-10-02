@@ -4,7 +4,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var nobleExtended = require('../../noble');
+var nobleExtended = require('noble-extended');
 
 var HEADER = [0xAA, 0x0A, 0xFC, 0x3A, 0x86, 0x01];
 var TAIL = [0x0D];
