@@ -6,10 +6,11 @@ const TAIL = [0x0D];
 
 const SEQUENCE_ON = HEADER.concat([0x0A, 0x01, 0x01, 0x00, 0x28], TAIL);
 const SEQUENCE_OFF = HEADER.concat([0x0A, 0x01, 0x00, 0x01, 0x28], TAIL);
-const SEQUENCE_BRIGHNTESS = HEADER.concat([0x0C, 0x01, 0x00, 0xEC]);
-const SEQUENCE_WHITE = HEADER.concat([0x0E, 0x01, 0x00, 0x14]);
-const SEQUENCE_WHITE_RESET = HEADER.concat([0x0D, 0x06, 0x02, 0x20, 0x30, 0x40, 0x50, 0x60]);
-const SEQUENCE_RGB = HEADER.concat([0x0D, 0x06, 0x01, 0x00, 0x00, 0x00, 0x20, 0x30, 0xF8]);
+const SEQUENCE_BRIGHNTESS = HEADER.concat([0x0C, 0x01, 0x00, 0xEC, 0x00]);
+const SEQUENCE_WHITE = HEADER.concat([0x0E, 0x01, 0x00, 0x14, 0x00]);
+const SEQUENCE_WHITE_RESET = HEADER.concat([0x0D, 0x06, 0x02, 0x20, 0x30, 0x40, 0x50, 0x60, 0x00, 0x00]);
+const SEQUENCE_RGB = HEADER.concat([0x0D, 0x06, 0x01, 0x00, 0x00, 0x00, 0x20, 0x30, 0xF8, 0x00]);
+const SEQUENCE_RGB_RESET = HEADER.concat([0x0D, 0x06, 0x01, 0x20, 0x30, 0x40, 0x50, 0x60, 0x00, 0x00]);
 
 module.exports = class AwoxSmartLight {
   constructor (lampMac, logger) { /*"d03972b84926"*/
@@ -44,57 +45,82 @@ module.exports = class AwoxSmartLight {
   }
 
   lightOn() {
+    this.logger("lightOn...");
     this.commandsQueue.push(SEQUENCE_ON);
     this.lightCommandDebounce();
   }
 
   lightOff() {
+    this.logger("lightOff...");
     this.commandsQueue.push(SEQUENCE_OFF);
     this.lightCommandDebounce();
   }
 
   lightBrightness(intensity) {
+    this.logger("lightBrightness...");
     // value
     SEQUENCE_BRIGHNTESS[8] = Math.floor((intensity * 9) + 2);
     // random
     SEQUENCE_BRIGHNTESS[9] = Math.floor(Math.random() * 0xFF) >>> 0;
     // checksum
-    SEQUENCE_BRIGHNTESS.push(this._checksum(SEQUENCE_BRIGHNTESS));
+    SEQUENCE_BRIGHNTESS[9] = 0x00;
+    SEQUENCE_BRIGHNTESS[9] = this._checksum(SEQUENCE_BRIGHNTESS);
 
     this.commandsQueue.push(SEQUENCE_BRIGHNTESS.concat(TAIL));
     this.lightCommandDebounce();
   }
 
   lightWhite(temperature) {
+    this.logger("lightWhite...");
     // value
     SEQUENCE_WHITE[8] = Math.floor((temperature * 9) + 2);
     // random
     SEQUENCE_WHITE[9] = Math.floor(Math.random() * 0xFF) >>> 0;
     // checksum
-    SEQUENCE_WHITE.push(this._checksum(SEQUENCE_WHITE));
+    SEQUENCE_WHITE[10] = 0x00;
+    SEQUENCE_WHITE[10] = this._checksum(SEQUENCE_WHITE);
+
     this.commandsQueue.push(SEQUENCE_WHITE.concat(TAIL));
     this.lightCommandDebounce();
   }
 
   lightWhiteReset() {
+    this.logger("lightWhiteReset...");
     // random
-    SEQUENCE_WHITE_RESET.push(Math.floor(Math.random() * 0xFF) >>> 0);
+    SEQUENCE_WHITE_RESET[14] = Math.floor(Math.random() * 0xFF) >>> 0;
     // checksum
-    SEQUENCE_WHITE_RESET.push(this._checksum(SEQUENCE_WHITE_RESET));
+    SEQUENCE_WHITE_RESET[15] = 0x00;
+    SEQUENCE_WHITE_RESET[15] = this._checksum(SEQUENCE_WHITE_RESET);
+
+    this.commandsQueue.push(SEQUENCE_WHITE_RESET.concat(TAIL));
+    this.lightCommandDebounce();
+  }
+
+  lightRgbReset() {
+    this.logger("lightRgbReset...");
+    // random
+    SEQUENCE_RGB_RESET[14] = Math.floor(Math.random() * 0xFF) >>> 0;
+    // checksum
+    SEQUENCE_RGB_RESET[15] = 0x00;
+    SEQUENCE_RGB_RESET[15] = this._checksum(SEQUENCE_WHITE_RESET);
+
     this.commandsQueue.push(SEQUENCE_WHITE_RESET.concat(TAIL));
     this.lightCommandDebounce();
   }
 
   lightRgb(r, g, b, special) {
+    this.logger("lightRgb...");
     SEQUENCE_RGB[8] = special ? 0x02 : 0x01;
     // RGB values
     SEQUENCE_RGB[9] = r;
     SEQUENCE_RGB[10] = g;
     SEQUENCE_RGB[11] = b;
     // random
-    SEQUENCE_RGB[14] = Math.floor(Math.random() * 0xFF) >>> 0;
+    SEQUENCE_RGB[14] = 137;//Math.floor(Math.random() * 0xFF) >>> 0;
+    // checksum
+    SEQUENCE_RGB[15] = 0x00;
+    SEQUENCE_RGB[15] = this._checksum(SEQUENCE_RGB);
 
-    SEQUENCE_RGB.push(this._checksum(SEQUENCE_RGB));
     this.commandsQueue.push(SEQUENCE_RGB.concat(TAIL));
     this.lightCommandDebounce();
   }
@@ -153,21 +179,31 @@ module.exports = class AwoxSmartLight {
 
                     this.logger('found characteristic fff1');
 
-                    var command = null;
                     var commandCharacteristic = characteristics[0];
-                    while(command = this.commandsQueue.shift()) {
-                        this.logger('command:' + command);
-                        commandCharacteristic.write(new Buffer(command), false, (error) => {
-                            if(error) {
-                              this.logger('cant send command');
-                              this.logger('the following error occured:' + error);
-                            } else {
-                              this.logger('command sent');
-                            }
+                    var index = 0;
+                    var sentIndex = 1;
+                    var commandsCount = this.commandsQueue.length;
+                    var writeCommand = (command) => {
+                      commandCharacteristic.write(new Buffer(command), false, (error) => {
+                          if(error) {
+                            this.logger('cant send command');
+                            this.logger('the following error occured:' + error);
+                          } else {
+                            this.logger('command sent:' + command);
+                          }
 
-                            if(this.commandsQueue.length === 0)
-                              peripheral.disconnect();
-                        });
+                          if(sentIndex >= commandsCount){
+                            this.logger('all commands sent, disconnect!');
+                            peripheral.disconnect();
+                          }
+
+                          sentIndex++;
+                      });
+                    };
+                    while(this.commandsQueue.length > 0) {
+                        var command = this.commandsQueue.shift();
+                        setTimeout(((command) => () => writeCommand(command))(command), 50 * index);
+                        index++;
                     }
                 });
               });

@@ -1,8 +1,8 @@
 {
   "name": "awox-smartlight",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "Control Awox smartlight from nodejs",
-  "main": "build/lib.js",
+  "main": "src/lib.js",
   "scripts": {
     "release": "npm run build && npm version patch && npm publish",
     "postversion": "git push && git push --tags",
@@ -10,7 +10,7 @@
     "doc": "jsdoc2md src/lib.js"
   },
   "bin": {
-    "awoxlight": "build/cli.js"
+    "awoxlight": "src/cli.js"
   },
   "repository": {
     "type": "git",
